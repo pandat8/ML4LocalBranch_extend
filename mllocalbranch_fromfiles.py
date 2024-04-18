@@ -8331,7 +8331,7 @@ class RlLocalbranch(MlLocalbranch):
 
         directory_lb_test_baseline_k0_average = directory + 'k_prime/' + 'lb-from-' + self.incumbent_mode + '-t_node' + str(
             node_time_limit) + 's' + '-t_total' + str(
-            total_time_limit) + 's' + test_instance_size + '_baseline_k0_avarage/seed' + str(self.seed) + '/'
+            total_time_limit) + 's' + test_instance_size + '_baseline_k0_average/seed' + str(self.seed) + '/'
 
         primal_int_baselines = []
         primal_int_regressions_merged = []
