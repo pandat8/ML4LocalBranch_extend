@@ -9951,11 +9951,12 @@ class RlLocalbranch(MlLocalbranch):
                 # # lb-regression
                 # # if times_regression[-1] < total_time_limit:
                 #
-                primal_int_regression, primal_gap_final_regression, stepline_regression = self.compute_primal_integral(
+                primal_int_regression, primal_gap_final_regression, stepline_regression, pi_stepline_regression = self.compute_primal_integral_2(
                     times=times_k_prime, objs=objs_k_prime, obj_opt=obj_opt, total_time_limit=total_time_limit)
                 primal_gap_final_regressions.append(primal_gap_final_regression)
                 steplines_regression.append(stepline_regression)
                 primal_int_regressions.append(primal_int_regression)
+                pi_steplines_regression.append(pi_stepline_regression)
 
                 # lb-regression-merged
                 # if times_regression[-1] < total_time_limit:
