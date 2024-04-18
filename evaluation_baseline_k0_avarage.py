@@ -17,6 +17,7 @@ parser.add_argument('--t_total', type=int, default=60)
 parser.add_argument('--dataset_id', type=int, default=0)
 parser.add_argument('--enable_merged', dest='merged', action='store_true', help='enable_merged')
 parser.add_argument('--disable_merged', dest='merged', action='store_false')
+parser.set_defaults(merged=False)
 parser.add_argument('--seed', type=int, default=100, help='Radom seed') ## 100 50 101
 args = parser.parse_args()
 
