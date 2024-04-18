@@ -4742,8 +4742,9 @@ class RegressionInitialK_KPrime(MlLocalbranch):
 
         print('incumbent solution is copied to MIP copies')
 
-        # # solve the root node and get the LP solution, compute k_prime
-        # k_prime = self.compute_k_prime(MIP_model, incumbent)
+        # solve the root node and get the LP solution, compute k_prime
+        k_prime = self.compute_k_prime(MIP_model, incumbent)
+        k0_average =  self.k_baseline * k_prime
 
         initial_obj = MIP_model.getSolObjVal(incumbent)
         print("Initial obj before LB: {}".format(initial_obj))
@@ -4773,7 +4774,7 @@ class RegressionInitialK_KPrime(MlLocalbranch):
         print("Initial obj before LB: {}".format(initial_obj))
 
         # execute local branching baseline heuristic by Fischetti and Lodi
-        lb_model = LocalBranching(MIP_model=MIP_model_copy, MIP_sol_bar=sol_MIP_copy, k=self.k_baseline,
+        lb_model = LocalBranching(MIP_model=MIP_model_copy, MIP_sol_bar=sol_MIP_copy, k=k0_average,
                                   node_time_limit=node_time_limit,
                                   total_time_limit=total_time_limit)
         status, obj_best, elapsed_time, lb_bits, times, objs, _, _ = lb_model.mdp_localbranch(
@@ -9768,6 +9769,9 @@ class RlLocalbranch(MlLocalbranch):
         directory_lb_test_baseline = directory + 'k_prime/' + 'lb-from-' + self.incumbent_mode + '-t_node' + str(
             node_time_limit) + 's' + '-t_total' + str(total_time_limit) + 's' + test_instance_size + '_baseline/seed'+ str(self.seed) + '/'
 
+        evaluation_directory = './result/generated_instances/' + self.instance_type + '/' + test_instance_size + '/' + self.incumbent_mode + '/' + 'scip/' + 'heuristic_mode/'
+        result_directory_scip = evaluation_directory + 'lb-from-' + self.incumbent_mode + '-t_total' + str(total_time_limit) + 's' + test_instance_size + '_scip_baseline/seed' + str(self.seed) + '/'
+
         primal_int_baselines = []
         primal_int_regressions_merged = []
         primal_int_regressions = []
@@ -9857,11 +9861,12 @@ class RlLocalbranch(MlLocalbranch):
                 # objs_regression = objs_pred_reset_2
                 # times_regression = times_pred_reset_2
 
-                # # test from k_prime
+                # test from k_prime, SCIP_baseline
+                filename = f'{result_directory_scip}lb-test-{instance_name}.pkl'
                 # filename = f'{directory_lb_test_k_prime}lb-test-{instance_name}.pkl'
-                # with gzip.open(filename, 'rb') as f:
-                #     data = pickle.load(f)
-                # objs_k_prime, times_k_prime = data  # objs contains objs of a single instance of a lb test
+                with gzip.open(filename, 'rb') as f:
+                    data = pickle.load(f)
+                objs_k_prime, times_k_prime = data  # objs contains objs of a single instance of a lb test
 
                 instance_name = self.instance_type + '-' + str(i) + '_transformed'  # instance 100-199
                 # test from k_prime_merged
@@ -9912,8 +9917,8 @@ class RlLocalbranch(MlLocalbranch):
 
                 objs_2 = np.array(objs_2).reshape(-1)
 
-                # objs_k_prime = np.array(objs_k_prime).reshape(-1)
-                # times_k_prime = np.array(times_k_prime).reshape(-1)
+                objs_k_prime = np.array(objs_k_prime).reshape(-1)
+                times_k_prime = np.array(times_k_prime).reshape(-1)
                 #
                 # objs_k_prime_2 = np.array(objs_k_prime_2).reshape(-1)
 
@@ -9923,7 +9928,7 @@ class RlLocalbranch(MlLocalbranch):
                 objs_k_prime_merged_2 = np.array(objs_k_prime_merged_2).reshape(-1)
 
                 # a = [objs_regression.min(), objs_regresison_reinforce.min(), objs_reset_vanilla_2.min(), objs_reset_imitation_2.min()]
-                a = [objs_reinforce.min(), objs_regresison_reinforce.min(), objs_reinforce_2.min(), objs_regresison_reinforce_2.min(), objs.min(), objs_2.min(), objs_k_prime_merged.min(), objs_k_prime_merged_2.min(), objs_reinforce_hybrid.min(), objs_regresison_reinforce_hybrid.min()] # , objs_reinforce_hybrid_2.min(), objs_regresison_reinforce_hybrid_2.min(),
+                a = [objs_reinforce.min(), objs_regresison_reinforce.min(), objs_reinforce_2.min(), objs_regresison_reinforce_2.min(), objs.min(), objs_2.min(), objs_k_prime_merged.min(), objs_k_prime_merged_2.min(), objs_reinforce_hybrid.min(), objs_regresison_reinforce_hybrid.min(), objs_k_prime.min()] # , objs_reinforce_hybrid_2.min(), objs_regresison_reinforce_hybrid_2.min(),
                 obj_opt = np.amin(a)
 
                 # lb-baseline:
@@ -9946,11 +9951,11 @@ class RlLocalbranch(MlLocalbranch):
                 # # lb-regression
                 # # if times_regression[-1] < total_time_limit:
                 #
-                # primal_int_regression, primal_gap_final_regression, stepline_regression = self.compute_primal_integral(
-                #     times=times_k_prime, objs=objs_k_prime, obj_opt=obj_opt, total_time_limit=total_time_limit)
-                # primal_gap_final_regressions.append(primal_gap_final_regression)
-                # steplines_regression.append(stepline_regression)
-                # primal_int_regressions.append(primal_int_regression)
+                primal_int_regression, primal_gap_final_regression, stepline_regression = self.compute_primal_integral(
+                    times=times_k_prime, objs=objs_k_prime, obj_opt=obj_opt, total_time_limit=total_time_limit)
+                primal_gap_final_regressions.append(primal_gap_final_regression)
+                steplines_regression.append(stepline_regression)
+                primal_int_regressions.append(primal_int_regression)
 
                 # lb-regression-merged
                 # if times_regression[-1] < total_time_limit:
@@ -10126,7 +10131,8 @@ class RlLocalbranch(MlLocalbranch):
         print(self.instance_type + test_instance_size)
         print(self.incumbent_mode + 'Solution')
         print('baseline primal integral: ', primal_int_base_ave)
-        print('regression primal integral: ', primal_int_regression_ave)
+        print('scip primal integral: ', primal_int_regression_ave)
+        # print('regression primal integral: ', primal_int_regression_ave)
         print('regression merged primal integral: ', primal_int_regression_merged_ave)
         print('rl primal integral: ', primal_int_reinforce_ave)
         print('regression-rl primal integral: ', primal_int_regression_reinforce_ave)
@@ -10136,7 +10142,8 @@ class RlLocalbranch(MlLocalbranch):
 
         print('\n')
         print('baseline primal gap: ', primal_gap_final_baseline_ave)
-        print('regression primal gap: ', primal_gap_final_regression_ave)
+        print('scip primal gap: ', primal_gap_final_regression_ave)
+        # print('regression primal gap: ', primal_gap_final_regression_ave)
         print('regression primal merged gap: ', primal_gap_final_regression_merged_ave)
         print('rl primal gap: ', primal_gap_final_reinforce_ave)
         print('regression-rl-hybrid primal gap: ', primal_gap_final_regression_reinforce_ave)
@@ -10155,14 +10162,14 @@ class RlLocalbranch(MlLocalbranch):
                 primalgaps_baseline = np.vstack((primalgaps_baseline, primal_gap))
         primalgap_baseline_ave = mean_shift(primalgaps_baseline, axis=0, mean_option=mean_option) # np.average(primalgaps_baseline, axis=0)
 
-        # primalgaps_regression = None
-        # for n, stepline_regression in enumerate(steplines_regression):
-        #     primal_gap = stepline_regression(t)
-        #     if n == 0:
-        #         primalgaps_regression = primal_gap
-        #     else:
-        #         primalgaps_regression = np.vstack((primalgaps_regression, primal_gap))
-        # primalgap_regression_ave = mean_shift(primalgaps_regression, axis=0, mean_option=mean_option) # np.average(primalgaps_regression, axis=0)
+        primalgaps_regression = None
+        for n, stepline_regression in enumerate(steplines_regression):
+            primal_gap = stepline_regression(t)
+            if n == 0:
+                primalgaps_regression = primal_gap
+            else:
+                primalgaps_regression = np.vstack((primalgaps_regression, primal_gap))
+        primalgap_regression_ave = mean_shift(primalgaps_regression, axis=0, mean_option=mean_option) # np.average(primalgaps_regression, axis=0)
 
         primalgaps_regression_merged = None
         for n, stepline_regression in enumerate(steplines_regression_merged):
@@ -10220,6 +10227,16 @@ class RlLocalbranch(MlLocalbranch):
                 pi_baseline = np.vstack((pi_baseline, pi))
         pi_baseline_ave = mean_shift(pi_baseline, axis=0, mean_option=mean_option) # np.average(pi_baseline, axis=0)
 
+        pi_regression = None
+        for n, pi_stepline_regression in enumerate(pi_steplines_regression):
+            pi = pi_stepline_regression(t)
+            if n == 0:
+                pi_regression = pi
+            else:
+                pi_regression = np.vstack((pi_regression, pi))
+        pi_regression_ave = mean_shift(pi_regression, axis=0,
+                                              mean_option=mean_option)  # np.average(pi_regression_merged, axis=0)
+
         pi_regression_merged = None
         for n, pi_stepline_regression_merged in enumerate(pi_steplines_regression_merged):
             pi = pi_stepline_regression_merged(t)
@@ -10271,6 +10288,7 @@ class RlLocalbranch(MlLocalbranch):
         fig.suptitle(self.instance_type + '-' + self.incumbent_mode, fontsize=13)
         # ax.set_title(self.insancte_type + test_instance_size + '-' + self.incumbent_mode, fontsize=14)
         ax.plot(t, primalgap_baseline_ave, label='lb-base', color='tab:blue')
+        ax.plot(t, primalgap_regression_ave, label='scip', color ='tab:purple')
         # ax.plot(t, primalgap_regression_ave, label='lb-sr', color ='tab:orange')
         ax.plot(t, primalgap_regression_merged_ave, label='lb-srm', color='tab:orange')
         ax.plot(t, primalgap_reinforce_ave, '--', label='lb-rl', color='tab:green')
@@ -10285,7 +10303,7 @@ class RlLocalbranch(MlLocalbranch):
         ax.grid()
         # fig.suptitle("Scaled primal gap", y=0.97, fontsize=13)
         # fig.tight_layout()
-        plt.savefig('./result/plots/'  + 'plot_primalgap_' + self.instance_type  + '_' + str(test_instance_size) + '_' + self.incumbent_mode + '_hybrid_rlpolicy-tk_enable-tbaseline_t1_'+ 'seed' + str(self.seed) + '_' + mean_option + '.png') # _hybrid.png, _hybrid_t_node_baseline.png
+        plt.savefig('./result/plots/'  + 'plot_primalgap_' + self.instance_type  + '_' + str(test_instance_size) + '_' + self.incumbent_mode + '_hybrid_rlpolicy-tk_enable-tbaseline_t1_'+ 'seed' + str(self.seed) + '_' + mean_option + '_20240418.png') # _hybrid.png, _hybrid_t_node_baseline.png
         plt.show()
         plt.clf()
 
@@ -10296,7 +10314,7 @@ class RlLocalbranch(MlLocalbranch):
         # ax.set_title(self.insancte_type + test_instance_size + '-' + self.incumbent_mode, fontsize=14)
         ax.plot(t, pi_baseline_ave, label='lb-base', color='tab:blue')
         # ax.plot(t, primalgap_regression_ave, label='lb-sr', color ='tab:orange')
-
+        ax.plot(t, pi_regression_ave, label='scip', color='tab:purple')
         ax.plot(t, pi_regression_merged_ave, label='lb-srm', color='tab:orange')
         ax.plot(t, pi_reinforce_ave, '--', label='lb-rl', color='tab:green')
         ax.plot(t, pi_regression_reinforce_ave, '--', label='lb-srm-rl', color='tab:red') # ax.plot(t, pi_regression_reinforce_ave, label='lb-srm-rl', color='tab:green')
@@ -10311,7 +10329,7 @@ class RlLocalbranch(MlLocalbranch):
         # fig.suptitle("Scaled primal gap", y=0.97, fontsize=13)
         # fig.tight_layout()
         plt.savefig('./result/plots/' + 'plot_primalintegral_' + self.instance_type + '_' + str(
-            test_instance_size) + '_' + self.incumbent_mode + '_hybrid_rlpolicy-tk_enable-tbaseline_t1' + 'seed' + str(self.seed) + '_' + mean_option + '.png') # _rlpolicy-tk_enable-tbaseline' + ', _hybrid_t_node_baseline.png
+            test_instance_size) + '_' + self.incumbent_mode + '_hybrid_rlpolicy-tk_enable-tbaseline_t1' + 'seed' + str(self.seed) + '_' + mean_option + '_20240418.png') # _rlpolicy-tk_enable-tbaseline' + ', _hybrid_t_node_baseline.png
         plt.show()
         plt.clf()
 
