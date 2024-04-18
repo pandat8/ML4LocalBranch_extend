@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--regression_model_path', type = str, default='./result/saved_models/regression/trained_params_mean_setcover-independentset-combinatorialauction_asymmetric_firstsol_k_prime_epoch163.pth')
 parser.add_argument('--rl_model_path', type = str, default='./result/saved_models/rl/reinforce/setcovering/checkpoint_trained_reward3_simplepolicy_rl4lb_reinforce_trainset_setcovering-small_lr0.01_epochs7.pth')
 parser.add_argument('--dataset_id', type=int, default=4)
-parser.add_argument('--t_total', type=int, default=1200)
+parser.add_argument('--t_total', type=int, default=600) #1200
 parser.add_argument('--seed', type=int, default=0, help='Radom seed') ## 100 50 101
 args = parser.parse_args()
 
@@ -45,7 +45,7 @@ enable_solve_master_problem = True
 
 
 instance_type = instancetypes[dataset_id]
-for j in range(1, 2):
+for j in range(0, 2):
     incumbent_mode = incumbent_modes[j]
 
     for k in range(0, 2):
