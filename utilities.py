@@ -14,6 +14,8 @@ t_reward_types = ['reward_k', 'reward_k+t', 'reward_t']
 
 mean_options = {'arithmetic': np.average, 'geometric': gmean}
 
+k_0_bank = {'setcovering-firstsol': 0.8775714285714286, 'setcovering-rootsol': 0.6008571428571429, 'independentset-firstsol': 0.6095714285714284, 'independentset-rootsol':0.2434285714285714, 'combinatorialauction-firstsol':0.18371428571428572, 'combinatorialauction-rootsol':0.30142857142857143, 'merged': 0.46942857142857136}
+
 def generator_switcher(dataset):
     switcher = {
         instancetypes[0] + instancesizes[0]: lambda: ecole.instance.SetCoverGenerator(n_rows=5000, n_cols=2000, density=0.01),

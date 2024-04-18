@@ -9,7 +9,7 @@ import pickle
 import json
 import matplotlib.pyplot as plt
 from geco.mips.loading.miplib import Loader
-from utilities import lbconstraint_modes, instancetypes, incumbent_modes, instancesizes, t_reward_types, generator_switcher, binary_support, copy_sol, mean_filter,mean_forward_filter, imitation_accuracy, haming_distance_solutions, haming_distance_solutions_asym, copy_sol, mean_shift
+from utilities import lbconstraint_modes, instancetypes, incumbent_modes, instancesizes, t_reward_types, generator_switcher, binary_support, copy_sol, mean_filter,mean_forward_filter, imitation_accuracy, haming_distance_solutions, haming_distance_solutions_asym, copy_sol, mean_shift, k_0_bank
 from localbranching import addLBConstraint, addLBConstraintAsymmetric
 from ecole_extend.environment_extend import SimpleConfiguring, SimpleConfiguringEnablecuts, SimpleConfiguringEnableheuristics
 from models import GraphDataset, GNNPolicy, BipartiteNodeData
@@ -4652,6 +4652,217 @@ class RegressionInitialK_KPrime(MlLocalbranch):
         del instance
         return index_instance
 
+    def evaluate_lb_per_instance_baseline_k0_average(self, node_time_limit, total_time_limit, index_instance,
+                                         reset_k_at_2nditeration=False):
+        """
+        evaluate a single MIP instance by two algorithms: lb-baseline and lb-pred_k
+        :param node_time_limit:
+        :param total_time_limit:
+        :param index_instance:
+        :return:
+        """
+        device = self.device
+        gc.collect()
+
+        # if index_instance == 18:
+        #     index_instance = 19
+
+        filename = f'{self.directory_transformedmodel}{self.instance_type}-{str(index_instance)}_transformed.cip'
+        firstsol_filename = f'{self.directory_sol}{self.incumbent_mode}-{self.instance_type}-{str(index_instance)}_transformed.sol'
+
+        MIP_model = Model()
+        print(filename)
+        MIP_model.readProblem(filename)
+        instance_name = MIP_model.getProbName()
+        print(instance_name)
+        n_vars = MIP_model.getNVars()
+        n_binvars = MIP_model.getNBinVars()
+        print("N of variables: {}".format(n_vars))
+        print("N of binary vars: {}".format(n_binvars))
+        print("N of constraints: {}".format(MIP_model.getNConss()))
+
+        incumbent = MIP_model.readSolFile(firstsol_filename)
+
+        feas = MIP_model.checkSol(incumbent)
+        try:
+            MIP_model.addSol(incumbent, False)
+        except:
+            print('Error: the root solution of ' + instance_name + ' is not feasible!')
+
+        instance = ecole.scip.Model.from_pyscipopt(MIP_model)
+        # observation, _, _, done, _ = self.env.reset(instance)
+        #
+        # # variable features: only incumbent solution
+        # variable_features = observation.variable_features[:, -1:]
+        # graph = BipartiteNodeData(observation.constraint_features,
+        #                           observation.edge_features.indices,
+        #                           observation.edge_features.values,
+        #                           variable_features)
+
+        # variable features: all the variable features
+        # graph = BipartiteNodeData(observation.constraint_features,
+        #                           observation.edge_features.indices,
+        #                           observation.edge_features.values,
+        #                           observation.variable_features)
+
+        # We must tell pytorch geometric how many nodes there are, for indexing purposes
+        # graph.num_nodes = observation.constraint_features.shape[0] + \
+        #                   observation.variable_features.shape[
+        #                       0]
+
+        # instance = Loader().load_instance('b1c1s1' + '.mps.gz')
+        # MIP_model = instance
+
+        # MIP_model.optimize()
+        # print("Status:", MIP_model.getStatus())
+        # print("best obj: ", MIP_model.getObjVal())
+        # print("Solving time: ", MIP_model.getSolvingTime())
+
+        # create a copy of MIP
+        MIP_model.resetParams()
+
+
+        MIP_model_copy, MIP_copy_vars, success = MIP_model.createCopy(
+            problemName='Baseline', origcopy=False)
+        # MIP_model_copy2, MIP_copy_vars2, success2 = MIP_model.createCopy(
+        #     problemName='GNN',
+        #     origcopy=False)
+        # MIP_model_copy3, MIP_copy_vars3, success3 = MIP_model.createCopy(
+        #     problemName='GNN+reset',
+        #     origcopy=False)
+
+        print('MIP copies are created')
+
+        MIP_model_copy, sol_MIP_copy = copy_sol(MIP_model, MIP_model_copy, incumbent,
+                                                MIP_copy_vars)
+        # MIP_model_copy2, sol_MIP_copy2 = copy_sol(MIP_model, MIP_model_copy2, incumbent,
+        #                                           MIP_copy_vars2)
+        # MIP_model_copy3, sol_MIP_copy3 = copy_sol(MIP_model, MIP_model_copy3, incumbent,
+        #                                           MIP_copy_vars3)
+
+        print('incumbent solution is copied to MIP copies')
+
+        # # solve the root node and get the LP solution, compute k_prime
+        # k_prime = self.compute_k_prime(MIP_model, incumbent)
+
+        initial_obj = MIP_model.getSolObjVal(incumbent)
+        print("Initial obj before LB: {}".format(initial_obj))
+
+        # binary_supports = binary_support(MIP_model, incumbent)
+        # print('binary support: ', binary_supports)
+        #
+        # k_model = self.regression_model_gnn(graph.constraint_features, graph.edge_index, graph.edge_attr,
+        #                                     graph.variable_features)
+        #
+        # k_pred = k_model.item() * k_prime
+        # print('GNN prediction: ', k_model.item())
+        #
+        # if self.is_symmetric == False:
+        #     k_pred = k_model.item() * k_prime
+
+        # del k_model
+        # del graph
+        # del observation
+
+        MIP_model.freeProb()
+        del MIP_model
+        del incumbent
+
+        sol = MIP_model_copy.getBestSol()
+        initial_obj = MIP_model_copy.getSolObjVal(sol)
+        print("Initial obj before LB: {}".format(initial_obj))
+
+        # execute local branching baseline heuristic by Fischetti and Lodi
+        lb_model = LocalBranching(MIP_model=MIP_model_copy, MIP_sol_bar=sol_MIP_copy, k=self.k_baseline,
+                                  node_time_limit=node_time_limit,
+                                  total_time_limit=total_time_limit)
+        status, obj_best, elapsed_time, lb_bits, times, objs, _, _ = lb_model.mdp_localbranch(
+            is_symmetric=self.is_symmetric,
+            reset_k_at_2nditeration=False,
+            policy=None,
+            optimizer=None,
+            device=device
+        )
+
+        objs = np.array(lb_model.primal_objs).reshape(-1)
+        times = np.array(lb_model.primal_times).reshape(-1)
+
+        print("Instance:", MIP_model_copy.getProbName())
+        print("Status of LB: ", status)
+        print("Best obj of LB: ", obj_best)
+        print("Solving time: ", elapsed_time)
+        print('\n')
+
+        MIP_model_copy.freeProb()
+        del sol_MIP_copy
+        del MIP_model_copy
+
+        # sol = MIP_model_copy2.getBestSol()
+        # initial_obj = MIP_model_copy2.getSolObjVal(sol)
+        # print("Initial obj before LB: {}".format(initial_obj))
+
+        # # execute local branching with 1. first k predicted by GNN, 2. for 2nd iteration of lb, reset k to default value of baseline
+        # lb_model3 = LocalBranching(MIP_model=MIP_model_copy3, MIP_sol_bar=sol_MIP_copy3, k=k_pred,
+        #                            node_time_limit=node_time_limit,
+        #                            total_time_limit=total_time_limit)
+        # status, obj_best, elapsed_time, lb_bits_regression_reset, times_regression_reset, objs_regression_reset, _, _ = lb_model3.mdp_localbranch(
+        #     is_symmetric=self.is_symmetric,
+        #     reset_k_at_2nditeration=reset_k_at_2nditeration,
+        #     policy=None,
+        #     optimizer=None,
+        #     device=device
+        # )
+        #
+        # print("Instance:", MIP_model_copy3.getProbName())
+        # print("Status of LB: ", status)
+        # print("Best obj of LB: ", obj_best)
+        # print("Solving time: ", elapsed_time)
+        # print('\n')
+        #
+        # MIP_model_copy3.freeProb()
+        # del sol_MIP_copy3
+        # del MIP_model_copy3
+
+        # # execute local branching with 1. first k predicted by GNN; 2. from 2nd iteration of lb, continue lb algorithm with no further injection
+        #
+        # lb_model2 = LocalBranching(MIP_model=MIP_model_copy2, MIP_sol_bar=sol_MIP_copy2, k=k_pred,
+        #                            node_time_limit=node_time_limit,
+        #                            total_time_limit=total_time_limit)
+        # status, obj_best, elapsed_time, lb_bits_regression_noreset, times_regression_noreset, objs_regression_noreset, _, _ = lb_model2.mdp_localbranch(
+        #     is_symmetric=self.is_symmetric,
+        #     reset_k_at_2nditeration=False,
+        #     policy=None,
+        #     optimizer=None,
+        #     device=device
+        # )
+        #
+        # print("Instance:", MIP_model_copy2.getProbName())
+        # print("Status of LB: ", status)
+        # print("Best obj of LB: ", obj_best)
+        # print("Solving time: ", elapsed_time)
+        # print('\n')
+        #
+        # MIP_model_copy2.freeProb()
+        # del sol_MIP_copy2
+        # del MIP_model_copy2
+
+        data = [objs, times]
+        saved_name = f'{self.instance_type}-{str(index_instance)}_transformed'
+        filename = f'{self.directory_lb_test}lb-test-{saved_name}.pkl'  # instance 100-199
+        with gzip.open(filename, 'wb') as f:
+            pickle.dump(data, f)
+        # del data
+        del objs
+        del times
+        # del objs_regression_reset
+        # del times_regression_reset
+        del lb_model
+        # del lb_model3
+
+        index_instance += 1
+        del instance
+        return index_instance
+
     def evaluate_localbranching_k_prime(self, test_instance_size='-small', train_instance_size='-small', total_time_limit=60,
                                 node_time_limit=30, reset_k_at_2nditeration=False, merged=False, baseline=False, regression_model_path=''):
 
@@ -4740,6 +4951,69 @@ class RegressionInitialK_KPrime(MlLocalbranch):
                                                                            reset_k_at_2nditeration=reset_k_at_2nditeration
                                                                            )
 
+    def evaluate_localbranching_baseline_k0_average(self, test_instance_size='-small', train_instance_size='-small', total_time_limit=60,
+                                node_time_limit=30, reset_k_at_2nditeration=False, merged=False):
+
+        self.train_dataset = self.instance_type + train_instance_size
+        self.evaluation_dataset = self.instance_type + test_instance_size
+
+        direc = './data/generated_instances/' + self.instance_type + '/' + test_instance_size + '/'
+        self.directory_transformedmodel = direc + 'transformedmodel' + '/test/'
+        self.directory_sol = direc + self.incumbent_mode + '/test/'
+
+        if not merged:
+            k0_average = k_0_bank[self.instance_type+'-'+self.incumbent_mode]
+        else:
+            k0_average = k_0_bank['merged']
+
+        self.k_baseline = k0_average
+
+        self.is_symmetric = True
+        if self.lbconstraint_mode == 'asymmetric':
+            self.is_symmetric = False
+            # self.k_baseline = self.k_baseline / 2
+        total_time_limit = total_time_limit
+        node_time_limit = node_time_limit
+
+        self.saved_gnn_directory = './result/saved_models/'
+        self.regression_model_gnn = GNNPolicy()
+
+        directory = './result/generated_instances/' + self.instance_type + '/' + test_instance_size + '/' + self.lbconstraint_mode + '/' + self.incumbent_mode + '/' + 'k_prime/'
+
+        if not merged:
+            self.directory_lb_test = directory + 'lb-from-' + self.incumbent_mode + '-t_node' + str(node_time_limit) + 's' + '-t_total' + str(total_time_limit) + 's' + test_instance_size + '_baseline_k0_average/seed'+ str(self.seed) + '/'
+        else:
+            self.directory_lb_test = directory + 'lb-from-' + self.incumbent_mode + '-t_node' + str(
+                node_time_limit) + 's' + '-t_total' + str(
+                total_time_limit) + 's' + test_instance_size + '_baseline_k0_average_merged/seed' + str(self.seed) + '/'
+        pathlib.Path(self.directory_lb_test).mkdir(parents=True, exist_ok=True)
+
+        index_instance = 160 # 160, 0
+        index_max =200 # 200, 30
+
+        if self.instance_type == instancetypes[3]:
+            index_instance = 80
+            index_max = 115
+        elif self.instance_type == instancetypes[4]:
+            index_instance = 0
+            index_max = 30
+
+        if self.instance_type == 'combinatorialauction' and test_instance_size == '-large':
+            index_instance = 0
+            index_max = 40
+
+
+
+        while index_instance < index_max:
+
+            if self.instance_type == 'miplib_39binary' and index_instance == 18:
+                index_instance = 19
+
+            index_instance = self.evaluate_lb_per_instance_baseline_k0_average(node_time_limit=node_time_limit,
+                                                                        total_time_limit=total_time_limit,
+                                                                       index_instance=index_instance,
+                                                                       reset_k_at_2nditeration=reset_k_at_2nditeration
+                                                                       )
 
     def solve2opt_evaluation(self, test_instance_size='-small'):
 
