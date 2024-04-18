@@ -8450,7 +8450,7 @@ class RlLocalbranch(MlLocalbranch):
             objs_k_prime_merged_2 = np.array(objs_k_prime_merged_2).reshape(-1)
 
             # a = [objs_regression.min(), objs_regresison_reinforce.min(), objs_reset_vanilla_2.min(), objs_reset_imitation_2.min()]
-            a = [objs_reinforce.min(), objs_regresison_reinforce.min(), objs_reinforce_2.min(), objs_regresison_reinforce_2.min(), objs.min(), objs_2.min(), objs_k_prime.min(), objs_k_prime_2.min(), objs_k_prime_merged.min(), objs_k_prime_merged_2.min(), objs_baseline_k0_average.min()]
+            a = [objs_reinforce.min(), objs_regresison_reinforce.min(), objs_reinforce_2.min(), objs_regresison_reinforce_2.min(), objs.min(), objs_2.min(), objs_k_prime.min(), objs_k_prime_2.min(), objs_k_prime_merged.min(), objs_k_prime_merged_2.min(), objs_lb_baseline_k0_average.min()]
             obj_opt = np.amin(a)
 
             # lb-baseline:
@@ -8522,7 +8522,7 @@ class RlLocalbranch(MlLocalbranch):
 
             # lb-reinforce-talored, or lb-baseline_k0_average
             primal_int_reinforce_talored, primal_gap_final_reinforce_talored, stepline_reinforce_talored = self.compute_primal_integral(
-                times=objs_lb_baseline_k0_average, objs=objs_lb_baseline_k0_average, obj_opt=obj_opt,
+                times=times_lb_baseline_k0_average, objs=objs_lb_baseline_k0_average, obj_opt=obj_opt,
                 total_time_limit=total_time_limit)
             primal_gap_final_reinforces_talored.append(primal_gap_final_reinforce_talored)
             steplines_reinforce_talored.append(stepline_reinforce_talored)
