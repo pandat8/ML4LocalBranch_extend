@@ -9770,7 +9770,7 @@ class RlLocalbranch(MlLocalbranch):
             node_time_limit) + 's' + '-t_total' + str(total_time_limit) + 's' + test_instance_size + '_baseline/seed'+ str(self.seed) + '/'
 
         evaluation_directory = './result/generated_instances/' + self.instance_type + '/' + test_instance_size + '/' + self.incumbent_mode + '/' + 'scip/' + 'heuristic_mode/'
-        result_directory_scip = evaluation_directory + 'lb-from-' + self.incumbent_mode + '-t_total' + str(total_time_limit) + 's' + test_instance_size + '_scip_baseline/seed' + str(100) + '/'
+        result_directory_scip = evaluation_directory + 'lb-from-' + self.incumbent_mode + '-t_total' + str(total_time_limit) + 's' + test_instance_size + '_scip_baseline/seed' + str(0) + '/'
 
         primal_int_baselines = []
         primal_int_regressions_merged = []
