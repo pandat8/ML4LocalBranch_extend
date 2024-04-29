@@ -8332,7 +8332,7 @@ class RlLocalbranch(MlLocalbranch):
 
         directory_lb_test_baseline_k0_average = directory + 'k_prime/' + 'lb-from-' + self.incumbent_mode + '-t_node' + str(
             node_time_limit) + 's' + '-t_total' + str(
-            total_time_limit) + 's' + test_instance_size + '_baseline_k0_average/seed' + str(self.seed) + '/'
+            total_time_limit) + 's' + test_instance_size + '_baseline_k0_average_merged/seed' + str(self.seed) + '/'
 
         primal_int_baselines = []
         primal_int_regressions_merged = []
@@ -8738,7 +8738,7 @@ class RlLocalbranch(MlLocalbranch):
         ax.grid()
         # fig.suptitle("Scaled primal gap", y=0.97, fontsize=13)
         # fig.tight_layout()
-        plt.savefig('./result/plots/' + self.instance_type + '_' + test_instance_size + '_' + self.incumbent_mode + '_tnode' + str(node_time_limit) + 's' + '_ttotal' + str(total_time_limit) + 's_' + 'server' + '_oldlb_seed' + str(self.seed) + '_' + mean_option + '20240418.png')
+        plt.savefig('./result/plots/' + self.instance_type + '_' + test_instance_size + '_' + self.incumbent_mode + '_tnode' + str(node_time_limit) + 's' + '_ttotal' + str(total_time_limit) + 's_' + 'server' + '_oldlb_seed' + str(self.seed) + '_' + mean_option + '20240418_k0base_merged.png')
         plt.show()
         plt.clf()
 
