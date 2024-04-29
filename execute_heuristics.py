@@ -5176,9 +5176,9 @@ class Execute_LB_Regression_RL(ExecuteHeuristic):
         print('GNN predicted ratio: ', k_model.item())
         k_ratio_pred =  k_model.item()
 
-        # set an uppper bound of the ratio
-        if k_ratio_pred > 0.8:
-            k_ratio_pred = 0.8
+        # # set an uppper bound of the ratio
+        # if k_ratio_pred > 0.8:
+        #     k_ratio_pred = 0.8
 
         k_pred = k_ratio_pred * k_prime
         k_pred = np.ceil(k_pred)
