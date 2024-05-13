@@ -59,7 +59,7 @@ else:
 for j in range(1, 2):
     incumbent_mode = incumbent_modes[j]
 
-    for k in range(0, 2):
+    for k in range(0, 1):
         instance_size = instancesizes[k]
 
         print(instance_type + instance_size)
