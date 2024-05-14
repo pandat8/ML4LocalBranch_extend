@@ -184,6 +184,7 @@ class LocalBranching:
 
         t_node = np.minimum(self.t_node, self.total_time_available)
         self.left_branch(t_node, is_symmetric=self.is_symmetric)  # execute 1 iteration of lb
+        n_nodes_subMIP = self.subMIP_model.getNNodes
 
         # node_time_limit = self.node_time_limit
 
@@ -396,7 +397,8 @@ class LocalBranching:
               'K: {:.0f}'.format(k_pre),
               't_node: {:.1f}'.format(t_pre),
               'self.div: {:.0f}'.format(div_pre),
-              'LB Status: {}'.format(subMIP_status)
+              'LB Status: {}'.format(subMIP_status),
+              'Number of Nodes: {}'.format(n_nodes_subMIP)
               )
 
 
